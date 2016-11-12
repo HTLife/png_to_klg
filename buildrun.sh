@@ -1,1 +1,1 @@
-clear && cd build && cmake .. && ./pngtoklg
+clear && cd build && cmake .. && build && ./pngtoklg
