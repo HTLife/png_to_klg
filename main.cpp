@@ -12,9 +12,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <iostream>
 #include <vector>
 #include <string>
 #include <utility>
+
+#include <sstream>
 
 extern char *optarg;
 extern int optind;
@@ -168,46 +171,130 @@ void writeOneFrame()
 
 
 void parseInfoFile(
-            std::string &strRGB_Path, 
-            std::string &strDepth_Path,
-            VEC_INFO &vec_info)
+            std::string &strPath, 
+            std::vector<int64_t> &vec_time,
+            std::vector<std::string> &vec_path)
+
 {
-    FILE *pFile = fopen(strRGB_Path.c_str(), "r");
+    char * line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    FILE *pFile = fopen(strPath.c_str(), "r");
     if(!pFile) {
         return;
     }
+
+    while ((read = getline(&line, &len, pFile)) != -1) {
+        //printf("Retrieved line of length %zu :\n", read);
+        //printf("%s", line);
+
+        std::istringstream is(line);
+        std::string part;
+        int iIdxToken = 0;
+        while (getline(is, part, ' '))
+        {
+            if(0 == iIdxToken)
+            {//first token which is time
+                part.erase(
+                    std::remove(part.begin(), 
+                        part.end(), '.'), part.end());
+                int numb;
+                std::istringstream ( part ) >> numb;
+                //printf("%d\n", numb);
+                vec_time.push_back(numb);
+            } else if(1 == iIdxToken) 
+            {
+                vec_path.push_back(part);
+            }
+            //std::cout << part << std::endl;
+            iIdxToken++;
+        }
+    }
     fclose(pFile);
+    //printf("size1: %d, size2:%d\n", vec_time.size(), vec_path.size());
+    //printf("'%s'\n", vec_path.back().c_str());
 }
-            
+
+void intersectionSequence(
+    VEC_INFO &vec_info,
+    std::vector<int64_t> &vec_time_1,
+    std::vector<std::string> &vec_path_1,
+    std::vector<int64_t> &vec_time_2,
+    std::vector<std::string> &vec_path_2)
+{
+    int i = 0, j = 0;
+    while (i < vec_time_1.size() && 
+           j < vec_time_2.size())
+    {
+        if (vec_time_1[i] < vec_time_2[j])
+            i++;
+        else if (vec_time_2[j] < vec_time_1[i])
+            j++;
+        else /* if arr1[i] == arr2[j] */
+        {
+            //printf(" %d ", arr2[j++]);
+            PATH_PAIR path_pair(vec_path_1[i], vec_path_2[j]);
+            SEQ seq(vec_time_1[i], path_pair);
+            vec_info.push_back(seq);
+            i++;
+        }
+    }
+}
 
 int main(int argc, char* argv[])
 {
-
-    int iRGB = -1;//rgb.txt argv index
-    int iDepth = -1;//depth.txt argv index
-
+    int option_count = 0;
+    std::string strDepth_Path;
+    std::string strRGB_Path;
     int c = 0;
     while((c = getopt(argc, argv, "dr")) != -1)
     {
         switch(c)
         {
             case 'd'://depth
-                iDepth = optind;
+                option_count++;
+                strDepth_Path = std::string(argv[optind]);
                 break;
             case 'r'://rgb
-                iRGB = optind;
+                option_count++;
+                strRGB_Path = std::string(argv[optind]);
                 break;
             default:
                 break;
         }
     }
+    if(option_count < 2)
+    {
+        fprintf(stderr, 
+            "Error: Please provide parameters -d and -r") ;
+        return -1;
+    }
 
     /// Parse files
     // (timestamp, (depth path, rgb path) )
     VEC_INFO vec_info;
-    std::string strDepth_Path(argv[iDepth]);
-    std::string strRGB_Path(argv[iRGB]);
+
+    std::vector<int64_t> vec_time_depth;
+    std::vector<std::string> vec_path_depth;
+    parseInfoFile(
+                strDepth_Path, 
+                vec_time_depth, 
+                vec_path_depth);
     
-    parseInfoFile(strRGB_Path, strDepth_Path, vec_info);
+    std::vector<int64_t> vec_time_rgb;
+    std::vector<std::string> vec_path_rgb;
+    parseInfoFile(
+                strRGB_Path, 
+                vec_time_rgb, 
+                vec_path_rgb);
+    
+    
+    intersectionSequence(vec_info,
+                vec_time_depth,
+                vec_path_depth,
+                vec_time_rgb,
+                vec_path_rgb);
+
+
 }
 
