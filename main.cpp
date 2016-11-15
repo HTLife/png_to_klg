@@ -22,10 +22,15 @@
 extern char *optarg;
 extern int optind;
 
+//(depth, rgb)
 typedef std::pair<std::string,std::string> PATH_PAIR;
 typedef std::pair<int64_t,PATH_PAIR> SEQ;
 typedef std::vector<SEQ> VEC_INFO;
 
+std::string strDatasetDir;
+
+
+    
 void encodeJpeg(CvMat **encodedImage, cv::Vec<unsigned char, 3> *rgb_data)
 {
 /*
@@ -56,7 +61,7 @@ void encodeJpeg(CvMat **encodedImage, cv::Vec<unsigned char, 3> *rgb_data)
 //
 
 
-void ReadFile(char *name, uint8_t* buffer) 
+void ReadFile(const char *name, uint8_t* buffer) 
 { 
     FILE *pFile = NULL;
     unsigned long fileLen = 0;
@@ -88,93 +93,114 @@ void ReadFile(char *name, uint8_t* buffer)
 }
 
 
-void writeOneFrame()
+
+void convertToKlg(
+    VEC_INFO &vec_info)
 {
+/*
+    FILE* fp = fopen("./rgb/scene_00_0000_rs.png", "rb");
+    if(!fp) {
+        printf("fail");
+    }
+    else
+    {
+        printf("success");
+    }
+return;*/
+    int depth_compress_buf_size = 
+        640 * 480 * sizeof(int16_t) * 4;
+    uint8_t * depth_compress_buf = 
+        (uint8_t*)malloc(depth_compress_buf_size);
 
-    CvMat * encodedImage = 0;
-    //640x480
-    //
-    char fileRGB[] = "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/rgb/scene_00_0000_rs.png";
-    char fileDepth[] = "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/depth/scene_00_0005_rs.png";
-    uint8_t* ptrDepth = NULL;
-    ReadFile(fileRGB, ptrDepth);
-    int64_t timestamp = 0;
-    
-
-
-    boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
-    boost::posix_time::time_duration duration(time.time_of_day());
-    int64_t imageTime = duration.total_microseconds();
-
+    int32_t numFrames = 0;
 
     std::string filename = "test.klg";
     FILE * logFile = fopen(filename.c_str(), "wb+");
-    
+
+    CvMat *encodedImage = 0;
+
+    VEC_INFO::iterator it = vec_info.begin();
+    for(it; it != vec_info.end(); it++) 
+    {
 
 
-    int32_t numFrames = 0;
-    
-    fwrite(&numFrames, sizeof(int32_t), 1, logFile);
-    
-    int depth_compress_buf_size = 640 * 480 * sizeof(int16_t) * 4;
-    uint8_t * depth_compress_buf = (uint8_t*)malloc(depth_compress_buf_size);
+        //640x480
+        uint8_t* ptrDepth = NULL;
+        ReadFile(it->second.first.c_str(), ptrDepth);
+        
 
-    int bufferIndex = 0;
-    unsigned long compressed_size = depth_compress_buf_size;
-    // compress2(
-    //   Bytef * dest, 
-    //   uLongf * destLen, 
-    //   const Bytef * source, 
-    //   uLong sourceLen, 
-    //   int level);
-    compress2(depth_compress_buf,
-                &compressed_size,
-                //(const Bytef*)frameBuffers[bufferIndex].first.first,//source
-                (const Bytef*)ptrDepth,
-                (uLong)640 * 480 * sizeof(short),
-                Z_BEST_SPEED);
+        unsigned long compressed_size = depth_compress_buf_size;
+        // compress2(
+        //   Bytef * dest, 
+        //   uLongf * destLen, 
+        //   const Bytef * source, 
+        //   uLong sourceLen, 
+        //   int level);
+        compress2(depth_compress_buf,
+                    &compressed_size,
+                    (const Bytef*)ptrDepth,
+                    (uLong)640 * 480 * sizeof(short),
+                    Z_BEST_SPEED);
 
-    //encodeJpeg(&encodedImage,
-                //(cv::Vec<unsigned char, 3> *)frameBuffers[bufferIndex].first.second);
-      //          (cv::Vec<unsigned char, 3> *)&ptrRGB);
+        free(ptrDepth);
 
-    IplImage *img = cvLoadImage(fileRGB, CV_LOAD_IMAGE_UNCHANGED);
 
-    int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
+        std::string strAbsPath = std::string(getcwd(NULL, 0)) + it->second.second.substr(1, it->second.second.length());
+
+
+        //printf("current working directory: %s\n", getcwd(NULL, NULL));
+        printf("ABSpath = %s\n", strAbsPath.c_str());
+        //printf("ABSpath = %s\n", "/home/rvlrobot/code/png_to_klg/livingroom_kt0_rs/rgb/scene_00_0000_rs.png");
+        //return;
+        IplImage *img = 
+            cvLoadImage(strAbsPath.c_str(), 
+                        CV_LOAD_IMAGE_UNCHANGED);
+        if(img == NULL)
+        {
+            printf("null");
+            fflush(stdout);
+            return;
+        }
+        int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
+        if(encodedImage != 0)
+        {
+            cvReleaseMat(&encodedImage);
+        }
+        encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
+
+        int32_t depthSize = compressed_size;
+        int32_t imageSize = encodedImage->width;
+
+        /**
+         * Format is:
+         * int32_t: numFrames
+         * int64_t: timestamp
+         * int32_t: depthSize
+         * int32_t: imageSize
+         * depthSize * unsigned char: depth_compress_buf
+         * imageSize * unsigned char: encodedImage->data.ptr
+         */
+        
+        fwrite(&numFrames, sizeof(int32_t), 1, logFile);
+        fwrite(&it->first, sizeof(int64_t), 1, logFile);
+        fwrite(&depthSize, sizeof(int32_t), 1, logFile);
+        fwrite(&imageSize, sizeof(int32_t), 1, logFile);
+        fwrite(depth_compress_buf, depthSize, 1, logFile);
+        fwrite(encodedImage->data.ptr, imageSize, 1, logFile);
+        numFrames++;
+    }
+
+    free(depth_compress_buf);
     if(encodedImage != 0)
     {
         cvReleaseMat(&encodedImage);
     }
-    encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
-
-    int32_t depthSize = compressed_size;
-    int32_t imageSize = encodedImage->width;
-
-    /**
-     * Format is:
-     * int64_t: timestamp
-     * int32_t: depthSize
-     * int32_t: imageSize
-     * depthSize * unsigned char: depth_compress_buf
-     * imageSize * unsigned char: encodedImage->data.ptr
-     */
-    
-    fwrite(&timestamp, sizeof(int64_t), 1, logFile);
-    fwrite(&depthSize, sizeof(int32_t), 1, logFile);
-    fwrite(&imageSize, sizeof(int32_t), 1, logFile);
-    fwrite(depth_compress_buf, depthSize, 1, logFile);
-    fwrite(encodedImage->data.ptr, imageSize, 1, logFile);
-
-    numFrames++;
 }
-
-
 
 void parseInfoFile(
             std::string &strPath, 
             std::vector<int64_t> &vec_time,
             std::vector<std::string> &vec_path)
-
 {
     char * line = NULL;
     size_t len = 0;
@@ -204,6 +230,13 @@ void parseInfoFile(
                 vec_time.push_back(numb);
             } else if(1 == iIdxToken) 
             {
+                if(part[part.length()-1] == '\n' && part.length() > 1)
+                {
+
+                    part.erase(
+                        std::remove(part.begin(), 
+                            part.end(), '\n'), part.end());
+                }
                 vec_path.push_back(part);
             }
             //std::cout << part << std::endl;
@@ -246,8 +279,9 @@ int main(int argc, char* argv[])
     int option_count = 0;
     std::string strDepth_Path;
     std::string strRGB_Path;
+
     int c = 0;
-    while((c = getopt(argc, argv, "dr")) != -1)
+    while((c = getopt(argc, argv, "drw")) != -1)
     {
         switch(c)
         {
@@ -259,11 +293,15 @@ int main(int argc, char* argv[])
                 option_count++;
                 strRGB_Path = std::string(argv[optind]);
                 break;
+            case 'w'://Dataset directory root path
+                option_count++;
+                strDatasetDir = std::string(argv[optind]);
+                break;
             default:
                 break;
         }
     }
-    if(option_count < 2)
+    if(option_count < 3)
     {
         fprintf(stderr, 
             "Error: Please provide parameters -d and -r") ;
@@ -294,6 +332,16 @@ int main(int argc, char* argv[])
                 vec_path_depth,
                 vec_time_rgb,
                 vec_path_rgb);
+
+    int ret = chdir(strDatasetDir.c_str());
+    if(ret != 0) 
+    {
+        fprintf(stderr, "dataset path not exist");
+    }
+    printf("current working directory: %s\n", getcwd(NULL, 0));
+    
+
+    convertToKlg(vec_info);
 
 
 }
