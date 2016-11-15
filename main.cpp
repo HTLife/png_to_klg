@@ -9,23 +9,39 @@
 
 #include "main.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 
-void encodeJpeg(CvMat *encodedImage, cv::Vec<unsigned char, 3> * rgb_data)
+#include <vector>
+#include <string>
+#include <utility>
+
+extern char *optarg;
+extern int optind;
+
+typedef std::pair<std::string,std::string> PATH_PAIR;
+typedef std::pair<int64_t,PATH_PAIR> SEQ;
+typedef std::vector<SEQ> VEC_INFO;
+
+void encodeJpeg(CvMat **encodedImage, cv::Vec<unsigned char, 3> *rgb_data)
 {
+/*
+    char fileRGB[] = "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/rgb/scene_00_0000_rs.png";
     cv::Mat3b rgb(480, 640, rgb_data, 1920);
 
     IplImage * img = new IplImage(rgb);
+    IplImage *img =  = cvLoadImage(fileRGB, CV_LOAD_IMAGE_UNCHANGED);
 
     int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
-
-    if(encodedImage != 0)
+    if(*encodedImage != 0)
     {
-        cvReleaseMat(&encodedImage);
-
+        cvReleaseMat(encodedImage);
     }
-    encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
+    *encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
 
-    delete img;
+    printf("hi3");
+    fflush(stdout); 
+    delete img;*/
 }
 
 
@@ -38,7 +54,7 @@ void encodeJpeg(CvMat *encodedImage, cv::Vec<unsigned char, 3> * rgb_data)
 
 
 void ReadFile(char *name, uint8_t* buffer) 
-{
+{ 
     FILE *pFile = NULL;
     unsigned long fileLen = 0;
 
@@ -51,7 +67,6 @@ void ReadFile(char *name, uint8_t* buffer)
     fseek(pFile, 0, SEEK_END);
     fileLen = ftell(pFile);
     fseek(pFile, 0, SEEK_SET);
-
     //Allocate memory
     buffer = (uint8_t*)malloc(fileLen+1);
     if(!buffer)
@@ -64,29 +79,22 @@ void ReadFile(char *name, uint8_t* buffer)
     fread(buffer, fileLen, 1, pFile);
     fclose(pFile);
 
-//    free(buffer);
+//    free(buffer); DEBUG
 
 
 }
 
-int main(int argc, char* argv[])
+
+void writeOneFrame()
 {
+
     CvMat * encodedImage = 0;
     //640x480
     //
     char fileRGB[] = "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/rgb/scene_00_0000_rs.png";
-//    FILE * fileRGB = fopen(
-//    "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/rgb/scene_00_0000_rs.png", "rb");
     char fileDepth[] = "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/depth/scene_00_0005_rs.png";
-//    FILE * fileDep = fopen(
-//    "/home/jackyliu/code/png_to_klg/livingroom_kt0_rs/depth/scene_00_0005_rs.png", "rb");
-
-    // <<depth ptr, rgb ptr>, timestamp>
-    //std::pair<std::pair<uint8_t *, uint8_t *>, int64_t> frameBuffers;
     uint8_t* ptrDepth = NULL;
     ReadFile(fileRGB, ptrDepth);
-    uint8_t* ptrRGB = NULL;
-    ReadFile(fileDepth, ptrRGB);
     int64_t timestamp = 0;
     
 
@@ -110,7 +118,6 @@ int main(int argc, char* argv[])
 
     int bufferIndex = 0;
     unsigned long compressed_size = depth_compress_buf_size;
-
     // compress2(
     //   Bytef * dest, 
     //   uLongf * destLen, 
@@ -124,9 +131,18 @@ int main(int argc, char* argv[])
                 (uLong)640 * 480 * sizeof(short),
                 Z_BEST_SPEED);
 
-    encodeJpeg(encodedImage,
+    //encodeJpeg(&encodedImage,
                 //(cv::Vec<unsigned char, 3> *)frameBuffers[bufferIndex].first.second);
-                (cv::Vec<unsigned char, 3> *)ptrRGB);
+      //          (cv::Vec<unsigned char, 3> *)&ptrRGB);
+
+    IplImage *img = cvLoadImage(fileRGB, CV_LOAD_IMAGE_UNCHANGED);
+
+    int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
+    if(encodedImage != 0)
+    {
+        cvReleaseMat(&encodedImage);
+    }
+    encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
 
     int32_t depthSize = compressed_size;
     int32_t imageSize = encodedImage->width;
@@ -147,9 +163,51 @@ int main(int argc, char* argv[])
     fwrite(encodedImage->data.ptr, imageSize, 1, logFile);
 
     numFrames++;
+}
 
 
 
+void parseInfoFile(
+            std::string &strRGB_Path, 
+            std::string &strDepth_Path,
+            VEC_INFO &vec_info)
+{
+    FILE *pFile = fopen(strRGB_Path.c_str(), "r");
+    if(!pFile) {
+        return;
+    }
+    fclose(pFile);
+}
+            
 
+int main(int argc, char* argv[])
+{
+
+    int iRGB = -1;//rgb.txt argv index
+    int iDepth = -1;//depth.txt argv index
+
+    int c = 0;
+    while((c = getopt(argc, argv, "dr")) != -1)
+    {
+        switch(c)
+        {
+            case 'd'://depth
+                iDepth = optind;
+                break;
+            case 'r'://rgb
+                iRGB = optind;
+                break;
+            default:
+                break;
+        }
+    }
+
+    /// Parse files
+    // (timestamp, (depth path, rgb path) )
+    VEC_INFO vec_info;
+    std::string strDepth_Path(argv[iDepth]);
+    std::string strRGB_Path(argv[iRGB]);
+    
+    parseInfoFile(strRGB_Path, strDepth_Path, vec_info);
 }
 
