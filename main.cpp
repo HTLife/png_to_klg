@@ -61,14 +61,14 @@ void encodeJpeg(CvMat **encodedImage, cv::Vec<unsigned char, 3> *rgb_data)
 //
 
 
-void ReadFile(const char *name, uint8_t* buffer) 
+int ReadFile(const char *name, uint8_t* buffer) 
 { 
     FILE *pFile = NULL;
     unsigned long fileLen = 0;
 
     pFile = fopen(name, "rb");
     if(!pFile) {
-        return;
+        return -1;
     }
 
     //Get file length
@@ -77,10 +77,11 @@ void ReadFile(const char *name, uint8_t* buffer)
     fseek(pFile, 0, SEEK_SET);
     //Allocate memory
     buffer = (uint8_t*)malloc(fileLen+1);
+    printf("fileSize = %d\n", fileLen);
     if(!buffer)
     {
         fprintf(stderr, "Memory error!");
-        return;
+        return -1;
     }
     
     //Read file contents into buffer
@@ -89,7 +90,7 @@ void ReadFile(const char *name, uint8_t* buffer)
 
 //    free(buffer); DEBUG
 
-
+    return 0;
 }
 
 
@@ -112,22 +113,50 @@ return;*/
     uint8_t * depth_compress_buf = 
         (uint8_t*)malloc(depth_compress_buf_size);
 
-    int32_t numFrames = 0;
+
+
 
     std::string filename = "test.klg";
     FILE * logFile = fopen(filename.c_str(), "wb+");
 
+    int32_t numFrames = (int32_t)vec_info.size() - 1;
+
+    fwrite(&numFrames, sizeof(int32_t), 1, logFile);
+
+    printf("numFrames:%d\n", sizeof(int32_t));
+
     CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
-    for(it; it != vec_info.end(); it++) 
+    int count = 0;
+    for(it; it != vec_info.end()-1; it++) 
     {
-
+        //count++;
+        //if(count > 200)
+        //{
+        //    break;
+        //}
 
         //640x480
         uint8_t* ptrDepth = NULL;
-        ReadFile(it->second.first.c_str(), ptrDepth);
+        //if(0 != ReadFile(it->second.first.c_str(), ptrDepth))
+        //{
+        //    continue;
+        //}
         
+        std::string strAbsPathDepth = 
+            std::string(
+                        getcwd(NULL, 0)) + 
+                        it->second.first.substr(1, it->second.first.length());
+        IplImage *imgDepth = 
+            cvLoadImage(strAbsPathDepth.c_str(), 
+                        CV_LOAD_IMAGE_UNCHANGED);
+        if(imgDepth == NULL)
+        {
+            printf("Fail to read depth img\n");
+            fclose(logFile);
+            return;
+        }
 
         unsigned long compressed_size = depth_compress_buf_size;
         // compress2(
@@ -136,11 +165,17 @@ return;*/
         //   const Bytef * source, 
         //   uLong sourceLen, 
         //   int level);
+        printf("sizeBeforeCompressed:%d\n", compressed_size);
         compress2(depth_compress_buf,
                     &compressed_size,
-                    (const Bytef*)ptrDepth,
+                    (const Bytef*)imgDepth->imageData,//ptrDepth,
                     (uLong)640 * 480 * sizeof(short),
                     Z_BEST_SPEED);
+        if(0 != imgDepth)
+        {
+            cvReleaseImage(&imgDepth);
+        }
+        printf("sizeAfterCompressed:%d\n", compressed_size);
 
         free(ptrDepth);
 
@@ -157,8 +192,7 @@ return;*/
                         CV_LOAD_IMAGE_UNCHANGED);
         if(img == NULL)
         {
-            printf("null");
-            fflush(stdout);
+            fclose(logFile);
             return;
         }
         int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
@@ -167,13 +201,12 @@ return;*/
             cvReleaseMat(&encodedImage);
         }
         encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
-
+        cvReleaseImage(&img);
         int32_t depthSize = compressed_size;
         int32_t imageSize = encodedImage->width;
 
         /**
          * Format is:
-         * int32_t: numFrames
          * int64_t: timestamp
          * int32_t: depthSize
          * int32_t: imageSize
@@ -181,13 +214,28 @@ return;*/
          * imageSize * unsigned char: encodedImage->data.ptr
          */
         
-        fwrite(&numFrames, sizeof(int32_t), 1, logFile);
+        unsigned char * depthData = 0;
+        unsigned char * rgbData = 0;
+        depthData = (unsigned char *)depth_compress_buf;
+        rgbData = (unsigned char *)encodedImage->data.ptr;
+
+    printf("timestamp:%d\n", sizeof(int64_t));
+    printf("depthSize:%d\n", sizeof(int32_t));
+    printf("imageSize:%d\n", sizeof(int32_t));
+    printf("depthData:%d\n", depthSize);
+    printf("rgbData:%d\n", imageSize);
+    printf("short:%d\n", sizeof(short));
         fwrite(&it->first, sizeof(int64_t), 1, logFile);
         fwrite(&depthSize, sizeof(int32_t), 1, logFile);
         fwrite(&imageSize, sizeof(int32_t), 1, logFile);
-        fwrite(depth_compress_buf, depthSize, 1, logFile);
-        fwrite(encodedImage->data.ptr, imageSize, 1, logFile);
-        numFrames++;
+        fwrite(depthData, depthSize, 1, logFile);
+        fwrite(rgbData, imageSize, 1, logFile);
+        //numFrames++;
+
+        if(encodedImage != 0)
+        {
+            cvReleaseMat(&encodedImage);
+        }
     }
 
     free(depth_compress_buf);
@@ -195,6 +243,7 @@ return;*/
     {
         cvReleaseMat(&encodedImage);
     }
+    fclose(logFile);
 }
 
 void parseInfoFile(
