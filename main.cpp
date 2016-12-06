@@ -31,19 +31,20 @@ std::string strDatasetDir;
 
 
 
-
 void convertToKlg(
-    VEC_INFO &vec_info)
+    VEC_INFO &vec_info,
+    std::string &strKlgFileName)
 {
-
-    std::string filename = "test.klg";
+    std::cout << "klg_name=" << strKlgFileName << std::endl;
+    std::string filename = strKlgFileName;//"test2.klg";
     FILE * logFile = fopen(filename.c_str(), "wb+");
 
     int32_t numFrames = (int32_t)vec_info.size() - 1;
 
     fwrite(&numFrames, sizeof(int32_t), 1, logFile);
 
-
+    //printf("klg_1\n");
+    printf("%d\n", vec_info.size());
     CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
@@ -55,15 +56,24 @@ void convertToKlg(
             std::string(
                         getcwd(NULL, 0)) + 
                         it->second.first.substr(1, it->second.first.length());
-        IplImage *imgDepth = 
-            cvLoadImage(strAbsPathDepth.c_str(), 
-                        CV_LOAD_IMAGE_UNCHANGED);
-        if(imgDepth == NULL)
-        {
-            printf("Fail to read depth img\n");
-            fclose(logFile);
-            return;
-        }
+        std::cout << strAbsPathDepth << std::endl;
+        //IplImage *imgDepth = 
+        //    cvLoadImage(strAbsPathDepth.c_str(), 
+       //                 CV_LOAD_IMAGE_UNCHANGED);
+
+
+        cv::Mat depth = imread(strAbsPathDepth.c_str(), cv::IMREAD_UNCHANGED);
+
+        //if(imgDepth == NULL)
+        //{
+        //    printf("Fail to read depth img\n");
+        //    fclose(logFile);
+        //    return;
+        //}
+        double depthScale = 0.0001;
+        depth.convertTo(depth, CV_16UC1, 1000 * depthScale);
+
+        int32_t depthSize = depth.total() * depth.elemSize();
 
         std::string strAbsPath = std::string(getcwd(NULL, 0)) + it->second.second.substr(1, it->second.second.length());
 
@@ -99,21 +109,24 @@ void convertToKlg(
         fwrite(&it->first, sizeof(int64_t), 1, logFile);
 
         /// DepthSize
-        fwrite(&imgDepth->imageSize, sizeof(int32_t), 1, logFile);
+        fwrite(&depthSize, sizeof(int32_t), 1, logFile);
 
         /// imageSize
         fwrite(&imageSize, sizeof(int32_t), 1, logFile);
 
         /// Depth buffer
-        fwrite(imgDepth->imageData, imgDepth->imageSize, 1, logFile);
+        //outStream.write((char*)depth.data, depthSize);
+        fwrite((char*)depth.data, depthSize, 1, logFile);
+        //fwrite(imgDepth->imageData, imgDepth->imageSize, 1, logFile);
 
         /// RGB buffer
         fwrite(rgbData, imageSize, 1, logFile);
 
-        if(0 != imgDepth)
-        {
-            cvReleaseImage(&imgDepth);
-        }
+        //if(0 != imgDepth)
+        //{
+        //    cvReleaseImage(&imgDepth);
+        //}
+        depth.release();
         if(encodedImage != 0)
         {
             cvReleaseMat(&encodedImage);
@@ -209,9 +222,10 @@ int main(int argc, char* argv[])
     int option_count = 0;
     std::string strDepth_Path;
     std::string strRGB_Path;
+    std::string strKlgFileName;
 
     int c = 0;
-    while((c = getopt(argc, argv, "drw")) != -1)
+    while((c = getopt(argc, argv, "drwo")) != -1)
     {
         switch(c)
         {
@@ -227,11 +241,15 @@ int main(int argc, char* argv[])
                 option_count++;
                 strDatasetDir = std::string(argv[optind]);
                 break;
+            case 'o'://klg filename
+                option_count++;
+                strKlgFileName = std::string(argv[optind]);
+                break;
             default:
                 break;
         }
     }
-    if(option_count < 3)
+    if(option_count < 4)
     {
         fprintf(stderr, 
             "Error: Please provide parameters -d and -r") ;
@@ -248,7 +266,6 @@ int main(int argc, char* argv[])
                 strDepth_Path, 
                 vec_time_depth, 
                 vec_path_depth);
-    
     std::vector<int64_t> vec_time_rgb;
     std::vector<std::string> vec_path_rgb;
     parseInfoFile(
@@ -264,6 +281,7 @@ int main(int argc, char* argv[])
                 vec_path_rgb);
 
     int ret = chdir(strDatasetDir.c_str());
+    printf("provided:%s\n", strDatasetDir.c_str());
     if(ret != 0) 
     {
         fprintf(stderr, "dataset path not exist");
@@ -271,7 +289,7 @@ int main(int argc, char* argv[])
     printf("current working directory: %s\n", getcwd(NULL, 0));
     
 
-    convertToKlg(vec_info);
+    convertToKlg(vec_info, strKlgFileName);
 
 
 }
