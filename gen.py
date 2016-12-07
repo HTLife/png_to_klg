@@ -18,7 +18,7 @@ def timeFile(fileList, path, subfolder):
     count = 0.033333
     
     for fileName in fileList:
-        fp.write("%.6f ./%s/%s\n" % (count, subfolder, fileName))
+        fp.write("%.6f %s/%s\n" % (count, subfolder, fileName))
         count = count + 0.033333
     
     fp.close()

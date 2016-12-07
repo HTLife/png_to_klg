@@ -19,6 +19,10 @@
 
 #include <sstream>
 
+#define NONE "\033[m"
+#define RED "\033[0;32;31m"
+
+
 extern char *optarg;
 extern int optind;
 
@@ -48,13 +52,8 @@ void convertToKlg(
     CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
-    int count = 0;
     for(it; it != vec_info.end()-1; it++) 
     {
-        count++;
-        if(count > 5) {
-            break;
-        }
         std::string strAbsPathDepth = 
             std::string(
                         getcwd(NULL, 0)) + "/" +
@@ -148,22 +147,23 @@ void convertToKlg(
     fclose(logFile);
 }
 
-void parseInfoFile(
-            std::string &strPath, 
-            std::vector<int64_t> &vec_time,
-            std::vector<std::string> &vec_path)
+
+
+
+int parseInfoFile(
+            std::string &strAssociation_Path,
+            VEC_INFO &vec_info)
 {
     char * line = NULL;
     size_t len = 0;
     ssize_t read;
-    FILE *pFile = fopen(strPath.c_str(), "r");
+    
+    FILE *pFile = fopen(strAssociation_Path.c_str(), "r");
     if(!pFile) {
-        return;
+        return -1;
     }
 
     while ((read = getline(&line, &len, pFile)) != -1) {
-        //printf("Retrieved line of length %zu :\n", read);
-        //printf("%s", line);
 
         std::istringstream is(line);
         std::string part;
@@ -174,39 +174,47 @@ void parseInfoFile(
             {
                 continue;
             }
+        
+            int64_t timeSeq = 0;
+            std::string strDepthPath;
+            std::string strRgbPath;
+
             std::istringstream iss(part);
             std::string token;
+
             while (getline(iss, token, ' '))
             {
-                if(0 == iIdxToken)
+                if(0 == iIdxToken) //Time rgb
                 {//first token which is time
                     token.erase(
                         std::remove(token.begin(), 
                             token.end(), '.'), token.end());
                     int numb;
                     std::istringstream ( token ) >> numb;
-                    //printf("%d\n", numb);
-                    vec_time.push_back(numb);
+                    timeSeq = numb;
                 } 
-                else if(1 == iIdxToken) 
+                else if(1 == iIdxToken)//rgb path
                 {
-                    /*if(token[token.length()-1] == '\n' && token.length() > 1)
-                    {
-
-                        token.erase(
-                            std::remove(token.begin(), 
-                                token.end(), '\n'), token.end());
-                    }*/
-                    vec_path.push_back(token);
+                    strRgbPath = token;
+                }
+                else if(2 == iIdxToken)//Time depth
+                {
+                    /// Do nothing
+                }
+                else if(3 == iIdxToken)//depth path
+                {
+                    strDepthPath = token;
                 }
 
                 iIdxToken++;
             }
+            PATH_PAIR path_pair(strDepthPath, strRgbPath);
+            SEQ seq(timeSeq, path_pair);
+            vec_info.push_back(seq);
         }
     }
     fclose(pFile);
-    //printf("size1: %d, size2:%d\n", vec_time.size(), vec_path.size());
-    //printf("'%s'\n", vec_path.back().c_str());
+    return 0;
 }
 
 void intersectionSequence(
@@ -238,23 +246,14 @@ void intersectionSequence(
 int main(int argc, char* argv[])
 {
     int option_count = 0;
-    std::string strDepth_Path;
-    std::string strRGB_Path;
+    std::string strAssociation_Path;
     std::string strKlgFileName;
 
     int c = 0;
-    while((c = getopt(argc, argv, "drwo")) != -1)
+    while((c = getopt(argc, argv, "wo")) != -1)
     {
         switch(c)
         {
-            case 'd'://depth
-                option_count++;
-                strDepth_Path = std::string(argv[optind]);
-                break;
-            case 'r'://rgb
-                option_count++;
-                strRGB_Path = std::string(argv[optind]);
-                break;
             case 'w'://Dataset directory root path
                 option_count++;
                 strDatasetDir = std::string(argv[optind]);
@@ -267,50 +266,67 @@ int main(int argc, char* argv[])
                 break;
         }
     }
-    if(option_count < 4)
+    if(option_count < 2)
     {
         fprintf(stderr, 
-            "Error: Please provide parameters -d and -r") ;
+            "Usage: ./pngtoklg -w (working directory) -o (klg file name)"    
+            "Example: ./pngtoklg -w ../livingroom_kt0_rs -o liv.klg");        
         return -1;
     }
+
+
 
     /// Change working directory
     int ret = chdir(strDatasetDir.c_str());
     if(ret != 0) 
     {
-        fprintf(stderr, "dataset path not exist");
+        fprintf(stderr, RED "dataset path not exist" NONE);
     }
     printf("\nCurrent working directory:\n\t%s\n", getcwd(NULL, 0));
 
 
+    strAssociation_Path = strDatasetDir;
+    if(strDatasetDir[strDatasetDir.length() - 1] != '/')
+    {
+        strAssociation_Path += '/';
+    }
+    strAssociation_Path += "associations.txt";
+    
     /// Parse files
     // (timestamp, (depth path, rgb path) )
     VEC_INFO vec_info;
 
-    std::vector<int64_t> vec_time_depth;
-    std::vector<std::string> vec_path_depth;
-    parseInfoFile(
-                strDepth_Path, 
-                vec_time_depth, 
-                vec_path_depth);
+    //std::vector<int64_t> vec_time_depth;
+    //std::vector<std::string> vec_path_depth;
+
+    int err = parseInfoFile(
+                strAssociation_Path, 
+                vec_info);
+    if(err != 0)
+    {
+        fprintf(stderr, 
+            RED "Fail to find associations.txt under working directory!\n" NONE); 
+        return -1;
+    }
+    /*
     std::vector<int64_t> vec_time_rgb;
     std::vector<std::string> vec_path_rgb;
     parseInfoFile(
                 strRGB_Path, 
                 vec_time_rgb, 
-                vec_path_rgb);
+                vec_path_rgb);*/
     
-    std::cout << "depth time vec size\t= " << vec_time_depth.size() << std::endl;
-    std::cout << "depth img vec size\t= " << vec_path_depth.size() << std::endl;
-    std::cout << "rgb time vec size\t= " << vec_time_rgb.size() << std::endl;
-    std::cout << "rgb img vec size\t= " << vec_path_rgb.size() << std::endl;
+    //std::cout << "depth time vec size\t= " << vec_time_depth.size() << std::endl;
+    //std::cout << "depth img vec size\t= " << vec_path_depth.size() << std::endl;
+    //std::cout << "rgb time vec size\t= " << vec_time_rgb.size() << std::endl;
+    //std::cout << "rgb img vec size\t= " << vec_path_rgb.size() << std::endl;
 
-    intersectionSequence(vec_info,
+    /*intersectionSequence(vec_info,
                 vec_time_depth,
                 vec_path_depth,
                 vec_time_rgb,
-                vec_path_rgb);
-    printf("strDepth_Path=%s\n", strDepth_Path.c_str());
+                vec_path_rgb);*/
+    //printf("strDepth_Path=%s\n", strDepth_Path.c_str());
     //printf("vec_info size=%d\n", vec_info.size());
 
 
