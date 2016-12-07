@@ -17,20 +17,26 @@ make
 # Usage #
 ## Parameters ##
 All parameters are required.
-- -w working directory path
-- -d depth info file
 - -r rgb info file
 - -o output file name (the output file will be place under working directory)
 
+## Prerequirement##
+Should place **associations.txt** under working directory.
+About how to generate associations.txt please read "Related files" section.
+
 ## Example ##
 ```bash
-./pngtoklg -w ../livingroom_kt0_rs -d depth.txt -r rgb.txt -o liv.klg
+./pngtoklg -w ../livingroom_kt0_rs -o liv.klg
 ```
 After execute the command above, "./livingroom_kt0_rs" folder should have liv.klg file (about 3.2Mb).
 
 
 
-# gen.py #
+# Related files #
+
+## gen.py ##
+> Generate rgb.txt and depth.txt
+
 > ICL-NUIM dataset has no rgb.txt and depth.txt files.  This script will generate TUM dataset like rgb.txt and depth.txt from depth and rgb folder in ICL-NUIM dataset..
 
 Type the following command
@@ -39,7 +45,7 @@ Type the following command
 ```
 It will generate rgb.txt and depth.txt under livingroom_kt0_rs folder.
 
-## rgb.txt format ##
+### rgb.txt format ###
 One row contain two informations.
 First is time sequence.
 Actually the time is not important.  We only need increasing number sequence.
@@ -55,4 +61,21 @@ Sample file content
 0.166665 ./rgb/scene_00_0004_rs.png
 0.199998 ./rgb/scene_00_0005_rs.png
 ...
+```
+## associate.py ##
+> This code is developed by TUM, which use to associate rgb.txt and depth.txt
+
+Type the following command
+```bash
+>python associate.py PATH_TO_SEQUENCE/rgb.txt PATH_TO_SEQUENCE/depth.txt > associations.txt
+```
+
+Sample file content
+```
+1311868164.363181 rgb/1311868164.363181.png 1311868164.373557 depth/1311868164.373557.png
+1311868164.399026 rgb/1311868164.399026.png 1311868164.407784 depth/1311868164.407784.png
+1311868164.430940 rgb/1311868164.430940.png 1311868164.437021 depth/1311868164.437021.png
+1311868164.463055 rgb/1311868164.463055.png 1311868164.477039 depth/1311868164.477039.png
+1311868164.499130 rgb/1311868164.499130.png 1311868164.507698 depth/1311868164.507698.png
+1311868164.531025 rgb/1311868164.531025.png 1311868164.539395 depth/1311868164.539395.png
 ```
