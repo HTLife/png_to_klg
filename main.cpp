@@ -3,6 +3,10 @@
  *
  * Created on: 3 Nov 2016
  *     Author: Jacky Liu
+ *
+ *
+ * Convert .png sequence in TUM compatible dataset to .klg format
+ * (.klg is the log file format for Kintinuous and ElasticFusion)
  */
 
 
@@ -26,15 +30,23 @@
 extern char *optarg;
 extern int optind;
 
-//(depth, rgb)
+/// PATH_PAIR = pair<depth image path, rgb image path>
 typedef std::pair<std::string,std::string> PATH_PAIR;
+
+/// SEQ = pair<timestamp, PATH_PAIR>
 typedef std::pair<int64_t,PATH_PAIR> SEQ;
 typedef std::vector<SEQ> VEC_INFO;
 
-std::string strDatasetDir;
+/// Working directory path
+std::string strWorkingDir;
 
 
-
+/** @brief Convert png image files to .klg format
+ *  
+ *  @param vec_info vector of path <timestamp, <depth path, rgb path>>
+ *  @param strKlgFileName output file name
+ *  @return void
+ */
 void convertToKlg(
     VEC_INFO &vec_info,
     std::string &strKlgFileName)
@@ -47,8 +59,6 @@ void convertToKlg(
 
     fwrite(&numFrames, sizeof(int32_t), 1, logFile);
 
-    //printf("klg_1\n");
-    //printf("%d\n", vec_info.size());
     CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
@@ -58,21 +68,11 @@ void convertToKlg(
             std::string(
                         getcwd(NULL, 0)) + "/" +
                         it->second.first;
-                        //it->second.first.substr(1, it->second.first.length());
         std::cout << strAbsPathDepth << std::endl;
-        //IplImage *imgDepth = 
-        //    cvLoadImage(strAbsPathDepth.c_str(), 
-       //                 CV_LOAD_IMAGE_UNCHANGED);
 
 
         cv::Mat depth = imread(strAbsPathDepth.c_str(), cv::IMREAD_UNCHANGED);
 
-        //if(imgDepth == NULL)
-        //{
-        //    printf("Fail to read depth img\n");
-        //    fclose(logFile);
-        //    return;
-        //}
         double depthScale = 0.0001;
         depth.convertTo(depth, CV_16UC1, 1000 * depthScale);
 
@@ -81,7 +81,6 @@ void convertToKlg(
         std::string strAbsPath = std::string(
                     getcwd(NULL, 0)) + "/" +
                     it->second.second;
-                    //it->second.second.substr(1, it->second.second.length());
 
         std::cout << strAbsPath << std::endl;
         IplImage *img = 
@@ -122,17 +121,11 @@ void convertToKlg(
         fwrite(&imageSize, sizeof(int32_t), 1, logFile);
 
         /// Depth buffer
-        //outStream.write((char*)depth.data, depthSize);
         fwrite((char*)depth.data, depthSize, 1, logFile);
-        //fwrite(imgDepth->imageData, imgDepth->imageSize, 1, logFile);
 
         /// RGB buffer
         fwrite(rgbData, imageSize, 1, logFile);
 
-        //if(0 != imgDepth)
-        //{
-        //    cvReleaseImage(&imgDepth);
-        //}
         depth.release();
         if(encodedImage != 0)
         {
@@ -150,6 +143,12 @@ void convertToKlg(
 
 
 
+/** @brief Parse associations.txt files to vector
+ *
+ *  @param strAssociation_Path path of associations.txt
+ *  @param vec_info vector of path <timestamp, <depth path, rgb path>>
+ *  @return void
+ */
 int parseInfoFile(
             std::string &strAssociation_Path,
             VEC_INFO &vec_info)
@@ -217,31 +216,6 @@ int parseInfoFile(
     return 0;
 }
 
-void intersectionSequence(
-    VEC_INFO &vec_info,
-    std::vector<int64_t> &vec_time_1,
-    std::vector<std::string> &vec_path_1,
-    std::vector<int64_t> &vec_time_2,
-    std::vector<std::string> &vec_path_2)
-{
-    int i = 0, j = 0;
-    while (i < vec_time_1.size() && 
-           j < vec_time_2.size())
-    {
-        if (vec_time_1[i] < vec_time_2[j])
-            i++;
-        else if (vec_time_2[j] < vec_time_1[i])
-            j++;
-        else /* if arr1[i] == arr2[j] */
-        {
-            //printf(" %d ", arr2[j++]);
-            PATH_PAIR path_pair(vec_path_1[i], vec_path_2[j]);
-            SEQ seq(vec_time_1[i], path_pair);
-            vec_info.push_back(seq);
-            i++;
-        }
-    }
-}
 
 int main(int argc, char* argv[])
 {
@@ -256,7 +230,7 @@ int main(int argc, char* argv[])
         {
             case 'w'://Dataset directory root path
                 option_count++;
-                strDatasetDir = std::string(argv[optind]);
+                strWorkingDir = std::string(argv[optind]);
                 break;
             case 'o'://klg filename
                 option_count++;
@@ -277,7 +251,7 @@ int main(int argc, char* argv[])
 
 
     /// Change working directory
-    int ret = chdir(strDatasetDir.c_str());
+    int ret = chdir(strWorkingDir.c_str());
     if(ret != 0) 
     {
         fprintf(stderr, RED "dataset path not exist" NONE);
@@ -285,8 +259,8 @@ int main(int argc, char* argv[])
     printf("\nCurrent working directory:\n\t%s\n", getcwd(NULL, 0));
 
 
-    strAssociation_Path = strDatasetDir;
-    if(strDatasetDir[strDatasetDir.length() - 1] != '/')
+    strAssociation_Path = strWorkingDir;
+    if(strWorkingDir[strWorkingDir.length() - 1] != '/')
     {
         strAssociation_Path += '/';
     }
@@ -296,8 +270,6 @@ int main(int argc, char* argv[])
     // (timestamp, (depth path, rgb path) )
     VEC_INFO vec_info;
 
-    //std::vector<int64_t> vec_time_depth;
-    //std::vector<std::string> vec_path_depth;
 
     int err = parseInfoFile(
                 strAssociation_Path, 
@@ -308,32 +280,8 @@ int main(int argc, char* argv[])
             RED "Fail to find associations.txt under working directory!\n" NONE); 
         return -1;
     }
-    /*
-    std::vector<int64_t> vec_time_rgb;
-    std::vector<std::string> vec_path_rgb;
-    parseInfoFile(
-                strRGB_Path, 
-                vec_time_rgb, 
-                vec_path_rgb);*/
-    
-    //std::cout << "depth time vec size\t= " << vec_time_depth.size() << std::endl;
-    //std::cout << "depth img vec size\t= " << vec_path_depth.size() << std::endl;
-    //std::cout << "rgb time vec size\t= " << vec_time_rgb.size() << std::endl;
-    //std::cout << "rgb img vec size\t= " << vec_path_rgb.size() << std::endl;
-
-    /*intersectionSequence(vec_info,
-                vec_time_depth,
-                vec_path_depth,
-                vec_time_rgb,
-                vec_path_rgb);*/
-    //printf("strDepth_Path=%s\n", strDepth_Path.c_str());
-    //printf("vec_info size=%d\n", vec_info.size());
-
-
-    
-
     convertToKlg(vec_info, strKlgFileName);
 
-
+    return 0;
 }
 
