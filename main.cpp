@@ -44,18 +44,22 @@ void convertToKlg(
     fwrite(&numFrames, sizeof(int32_t), 1, logFile);
 
     //printf("klg_1\n");
-    printf("%d\n", vec_info.size());
+    //printf("%d\n", vec_info.size());
     CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
     int count = 0;
     for(it; it != vec_info.end()-1; it++) 
     {
-        
+        count++;
+        if(count > 5) {
+            break;
+        }
         std::string strAbsPathDepth = 
             std::string(
-                        getcwd(NULL, 0)) + 
-                        it->second.first.substr(1, it->second.first.length());
+                        getcwd(NULL, 0)) + "/" +
+                        it->second.first;
+                        //it->second.first.substr(1, it->second.first.length());
         std::cout << strAbsPathDepth << std::endl;
         //IplImage *imgDepth = 
         //    cvLoadImage(strAbsPathDepth.c_str(), 
@@ -75,8 +79,12 @@ void convertToKlg(
 
         int32_t depthSize = depth.total() * depth.elemSize();
 
-        std::string strAbsPath = std::string(getcwd(NULL, 0)) + it->second.second.substr(1, it->second.second.length());
+        std::string strAbsPath = std::string(
+                    getcwd(NULL, 0)) + "/" +
+                    it->second.second;
+                    //it->second.second.substr(1, it->second.second.length());
 
+        std::cout << strAbsPath << std::endl;
         IplImage *img = 
             cvLoadImage(strAbsPath.c_str(), 
                         CV_LOAD_IMAGE_UNCHANGED);
@@ -160,30 +168,40 @@ void parseInfoFile(
         std::istringstream is(line);
         std::string part;
         int iIdxToken = 0;
-        while (getline(is, part, ' '))
+        while (getline(is, part))
         {
-            if(0 == iIdxToken)
-            {//first token which is time
-                part.erase(
-                    std::remove(part.begin(), 
-                        part.end(), '.'), part.end());
-                int numb;
-                std::istringstream ( part ) >> numb;
-                //printf("%d\n", numb);
-                vec_time.push_back(numb);
-            } else if(1 == iIdxToken) 
+            if('#' == part[0])/// Skip file comment '#" 
             {
-                if(part[part.length()-1] == '\n' && part.length() > 1)
-                {
-
-                    part.erase(
-                        std::remove(part.begin(), 
-                            part.end(), '\n'), part.end());
-                }
-                vec_path.push_back(part);
+                continue;
             }
-            //std::cout << part << std::endl;
-            iIdxToken++;
+            std::istringstream iss(part);
+            std::string token;
+            while (getline(iss, token, ' '))
+            {
+                if(0 == iIdxToken)
+                {//first token which is time
+                    token.erase(
+                        std::remove(token.begin(), 
+                            token.end(), '.'), token.end());
+                    int numb;
+                    std::istringstream ( token ) >> numb;
+                    //printf("%d\n", numb);
+                    vec_time.push_back(numb);
+                } 
+                else if(1 == iIdxToken) 
+                {
+                    /*if(token[token.length()-1] == '\n' && token.length() > 1)
+                    {
+
+                        token.erase(
+                            std::remove(token.begin(), 
+                                token.end(), '\n'), token.end());
+                    }*/
+                    vec_path.push_back(token);
+                }
+
+                iIdxToken++;
+            }
         }
     }
     fclose(pFile);
@@ -256,6 +274,15 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    /// Change working directory
+    int ret = chdir(strDatasetDir.c_str());
+    if(ret != 0) 
+    {
+        fprintf(stderr, "dataset path not exist");
+    }
+    printf("\nCurrent working directory:\n\t%s\n", getcwd(NULL, 0));
+
+
     /// Parse files
     // (timestamp, (depth path, rgb path) )
     VEC_INFO vec_info;
@@ -273,20 +300,20 @@ int main(int argc, char* argv[])
                 vec_time_rgb, 
                 vec_path_rgb);
     
-    
+    std::cout << "depth time vec size\t= " << vec_time_depth.size() << std::endl;
+    std::cout << "depth img vec size\t= " << vec_path_depth.size() << std::endl;
+    std::cout << "rgb time vec size\t= " << vec_time_rgb.size() << std::endl;
+    std::cout << "rgb img vec size\t= " << vec_path_rgb.size() << std::endl;
+
     intersectionSequence(vec_info,
                 vec_time_depth,
                 vec_path_depth,
                 vec_time_rgb,
                 vec_path_rgb);
+    printf("strDepth_Path=%s\n", strDepth_Path.c_str());
+    //printf("vec_info size=%d\n", vec_info.size());
 
-    int ret = chdir(strDatasetDir.c_str());
-    printf("provided:%s\n", strDatasetDir.c_str());
-    if(ret != 0) 
-    {
-        fprintf(stderr, "dataset path not exist");
-    }
-    printf("current working directory: %s\n", getcwd(NULL, 0));
+
     
 
     convertToKlg(vec_info, strKlgFileName);
