@@ -59,7 +59,7 @@ void convertToKlg(
 
     fwrite(&numFrames, sizeof(int32_t), 1, logFile);
 
-    CvMat *encodedImage = 0;
+    //CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
     for(it; it != vec_info.end()-1; it++) 
@@ -91,17 +91,19 @@ void convertToKlg(
             fclose(logFile);
             return;
         }
-        int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
-        if(encodedImage != 0)
-        {
-            cvReleaseMat(&encodedImage);
-        }
-        encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
-        cvReleaseImage(&img);
-        int32_t imageSize = encodedImage->width;
+        //int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
+        //if(encodedImage != 0)
+        //{
+        //    cvReleaseMat(&encodedImage);
+        //}
+        //encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
+
+        int32_t imageSize = img->height * img->width * sizeof(unsigned char) * 3;
+        //int32_t imageSize = encodedImage->width;
 
         unsigned char * rgbData = 0;
-        rgbData = (unsigned char *)encodedImage->data.ptr;
+        rgbData = (unsigned char *)img->imageData;
+        //rgbData = (unsigned char *)encodedImage->data.ptr;
         /**
          * Format is:
          * int64_t: timestamp
@@ -126,17 +128,18 @@ void convertToKlg(
         /// RGB buffer
         fwrite(rgbData, imageSize, 1, logFile);
 
+        cvReleaseImage(&img);
         depth.release();
-        if(encodedImage != 0)
-        {
-            cvReleaseMat(&encodedImage);
-        }
+        //if(encodedImage != 0)
+        //{
+        //    cvReleaseMat(&encodedImage);
+        //}
     }
 
-    if(encodedImage != 0)
-    {
-        cvReleaseMat(&encodedImage);
-    }
+    //if(encodedImage != 0)
+    //{
+    //    cvReleaseMat(&encodedImage);
+    //}
     fclose(logFile);
 }
 
