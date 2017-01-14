@@ -40,6 +40,10 @@ typedef std::vector<SEQ> VEC_INFO;
 /// Working directory path
 std::string strWorkingDir;
 
+bool g_bFlag_reverse = false;
+bool g_bFlag_TUM = false;
+double g_dScale = 0.001;//depth scale
+
 
 /** @brief Convert png image files to .klg format
  *  
@@ -62,7 +66,7 @@ void convertToKlg(
     //CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
-    for(it; it != vec_info.end()-1; it++) 
+    for(it; it != vec_info.end(); it++) 
     {
         std::string strAbsPathDepth = 
             std::string(
@@ -73,7 +77,8 @@ void convertToKlg(
 
         cv::Mat depth = imread(strAbsPathDepth.c_str(), cv::IMREAD_UNCHANGED);
 
-        double depthScale = 0.0001;
+        //double depthScale = 0.0001;
+        double depthScale = g_dScale;
         depth.convertTo(depth, CV_16UC1, 1000 * depthScale);
 
         int32_t depthSize = depth.total() * depth.elemSize();
@@ -112,7 +117,7 @@ void convertToKlg(
          * depthSize * unsigned char: depth_compress_buf
          * imageSize * unsigned char: encodedImage->data.ptr
          */
-
+        std::cout << it->first << std::endl;
         /// Timestamp
         fwrite(&it->first, sizeof(int64_t), 1, logFile);
 
@@ -186,28 +191,54 @@ int parseInfoFile(
 
             while (getline(iss, token, ' '))
             {
-                if(0 == iIdxToken) //Time rgb
-                {//first token which is time
-                    token.erase(
-                        std::remove(token.begin(), 
-                            token.end(), '.'), token.end());
-                    int numb;
-                    std::istringstream ( token ) >> numb;
-                    timeSeq = numb;
-                } 
-                else if(1 == iIdxToken)//rgb path
+                if(true == g_bFlag_reverse)
                 {
-                    strRgbPath = token;
+                    if(0 == iIdxToken) //Time rgb
+                    {//first token which is time
+                        token.erase(
+                            std::remove(token.begin(), 
+                                token.end(), '.'), token.end());
+                        int numb;
+                        std::istringstream ( token ) >> numb;
+                        timeSeq = numb;
+                    } 
+                    else if(1 == iIdxToken)//rgb path
+                    {
+                        strRgbPath = token;
+                    }
+                    else if(2 == iIdxToken)//Time depth
+                    {
+                        /// Do nothing
+                    }
+                    else if(3 == iIdxToken)//depth path
+                    {
+                        strDepthPath = token;
+                    }
                 }
-                else if(2 == iIdxToken)//Time depth
-                {
-                    /// Do nothing
+                else
+                {//reverse order
+                    if(2 == iIdxToken) //Time rgb
+                    {//first token which is time
+                        token.erase(
+                            std::remove(token.begin(), 
+                                token.end(), '.'), token.end());
+                        int numb;
+                        std::istringstream ( token ) >> numb;
+                        timeSeq = numb;
+                    } 
+                    else if(3 == iIdxToken)//rgb path
+                    {
+                        strRgbPath = token;
+                    }
+                    else if(0 == iIdxToken)//Time depth
+                    {
+                        /// Do nothing
+                    }
+                    else if(1 == iIdxToken)//depth path
+                    {
+                        strDepthPath = token;
+                    }
                 }
-                else if(3 == iIdxToken)//depth path
-                {
-                    strDepthPath = token;
-                }
-
                 iIdxToken++;
             }
             PATH_PAIR path_pair(strDepthPath, strRgbPath);
@@ -227,7 +258,7 @@ int main(int argc, char* argv[])
     std::string strKlgFileName;
 
     int c = 0;
-    while((c = getopt(argc, argv, "wo")) != -1)
+    while((c = getopt(argc, argv, "worts")) != -1)
     {
         switch(c)
         {
@@ -239,6 +270,19 @@ int main(int argc, char* argv[])
                 option_count++;
                 strKlgFileName = std::string(argv[optind]);
                 break;
+            case 'r'://associations.txt is in reverse order (rgb)(depth)
+                option_count++;
+                g_bFlag_reverse = true;
+
+                break;
+            case 't'://TUM format
+                option_count++;
+                g_bFlag_TUM = true;
+                break;
+            case 's'://TUM format
+                option_count++;
+                sscanf(argv[optind], "%lf", &g_dScale);
+                break;
             default:
                 break;
         }
@@ -246,8 +290,14 @@ int main(int argc, char* argv[])
     if(option_count < 2)
     {
         fprintf(stderr, 
-            "Usage: ./pngtoklg -w (working directory) -o (klg file name)"    
-            "Example: ./pngtoklg -w ../livingroom_kt0_rs -o liv.klg");        
+            "Usage: ./pngtoklg -w (working directory) -o (klg file name)\n"    
+            "\n"
+            "-w working directory\n"
+            "-o output klg filename\n"
+            "-r associations.txt is in reverse order (rgb)(depth)\n"
+            "-t TUM format\n"
+            "-s Scale factor in floating point ex.  '0.0002'\n"
+            "Example: ./pngtoklg -w ../livingroom_kt0_rs -o liv.klg\n");        
         return -1;
     }
 
@@ -283,8 +333,13 @@ int main(int argc, char* argv[])
             RED "Fail to find associations.txt under working directory!\n" NONE); 
         return -1;
     }
+
     convertToKlg(vec_info, strKlgFileName);
 
+    std::cout << vec_info.size() << std::endl;
+    std::cout << "Depth: " << vec_info.back().second.first << std::endl;
+    std::cout << "RGB: " << vec_info.back().second.second << std::endl;
+    std::cout << "scale: " << g_dScale << std::endl;
     return 0;
 }
 
