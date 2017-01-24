@@ -200,7 +200,15 @@ int parseInfoFile(
                                 token.end(), '.'), token.end());
                         int numb;
                         std::istringstream ( token ) >> numb;
-                        timeSeq = numb;
+
+                        if(true == g_bFlag_TUM) 
+                        {
+                            timeSeq = numb;
+                        }
+                        else
+                        {
+                            timeSeq = numb * 1000000;
+                        }
                     } 
                     else if(1 == iIdxToken)//rgb path
                     {
@@ -224,7 +232,15 @@ int parseInfoFile(
                                 token.end(), '.'), token.end());
                         int numb;
                         std::istringstream ( token ) >> numb;
-                        timeSeq = numb;
+
+                        if(true == g_bFlag_TUM) 
+                        {
+                            timeSeq = numb;
+                        }
+                        else
+                        {
+                            timeSeq = numb * 1000000;
+                        }
                     } 
                     else if(3 == iIdxToken)//rgb path
                     {
