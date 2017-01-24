@@ -17,8 +17,11 @@ make
 # Usage #
 ## Parameters ##
 All parameters are required.
-- -r rgb info file
+- -w working directory
 - -o output file name (the output file will be place under working directory)
+- -r associations.txt is in reverse order (rgb)(depth)
+- -t TUM format / defualt format is ICL-NUIM
+- -s Scale factor in floating point ex. '0.0002'
 
 ## Prerequirement##
 Should place **associations.txt** under working directory.
@@ -26,7 +29,7 @@ About how to generate associations.txt please read "Related files" section.
 
 ## Example ##
 ```bash
-./pngtoklg -w ../livingroom_kt0_rs -o liv.klg
+./pngtoklg -w ../livingroom_kt0_rs -o liv.klg -s 0.0002 -t
 ```
 After execute the command above, "./livingroom_kt0_rs" folder should have liv.klg file (about 3.2Mb).
 
