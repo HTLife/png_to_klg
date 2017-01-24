@@ -37,16 +37,6 @@ After execute the command above, "./livingroom_kt0_rs" folder should have liv.kl
 
 # Related files #
 
-## gen.py ##
-> Generate rgb.txt and depth.txt
-
-> ICL-NUIM dataset has no rgb.txt and depth.txt files.  This script will generate TUM dataset like rgb.txt and depth.txt from depth and rgb folder in ICL-NUIM dataset..
-
-Type the following command
-```bash
->python ./gen.py livingroom_kt0_rs
-```
-It will generate rgb.txt and depth.txt under livingroom_kt0_rs folder.
 
 ### rgb.txt format ###
 One row contain two informations.
@@ -73,7 +63,8 @@ Type the following command
 >python associate.py PATH_TO_SEQUENCE/rgb.txt PATH_TO_SEQUENCE/depth.txt > associations.txt
 ```
 
-Sample file content
+Sample file content (TUM RGB-D dataset format)
+If you are using ICL-NUIM, the timestamp will be integer number
 ```
 1311868164.363181 rgb/1311868164.363181.png 1311868164.373557 depth/1311868164.373557.png
 1311868164.399026 rgb/1311868164.399026.png 1311868164.407784 depth/1311868164.407784.png
