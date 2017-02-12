@@ -31,6 +31,16 @@ About how to generate associations.txt please read "Related files" section.
 After execute the command above, "./livingroom_kt0_rs" folder should have liv.klg file (about 3.2Mb).
 
 
+## Convert TUM dataset ##
+```bash
+./pngtoklg -w './tum/rgbd_dataset_freiburg2_360_kidnap/' -o './360_kidnap.klg' -t -s 0.0002
+```
+
+## Convert ICL-NUIM dataset
+remove -t option which is stand for tum
+```bash
+./pngtoklg -w './tum/rgbd_dataset_freiburg2_360_kidnap/' -o './360_kidnap.klg' -s 0.0002
+```
 
 # Related files #
 
