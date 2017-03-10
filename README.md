@@ -39,6 +39,11 @@ After execute the command above, "./livingroom_kt0_rs" folder should have liv.kl
 ./pngtoklg -w './tum/rgbd_dataset_freiburg2_360_kidnap/' -o './360_kidnap.klg' -t -s 0.0002
 ```
 
+Run with ElasticFusion
+```bash
+./ElasticFusion -l (path to 360_kidnap.klg) -d 12 -c 3 -f
+```
+
 ## Convert ICL-NUIM dataset
 remove -t option which is stand for tum
 ```bash
