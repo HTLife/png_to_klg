@@ -4,6 +4,37 @@ Convert [TUM RGB-D png dataset](http://vision.in.tum.de/data/datasets/rgbd-datas
 
 Also work with [ICL-NUIM dataset](https://www.doc.ic.ac.uk/~ahanda/VaFRIC/iclnuim.html) (TUM RGB-D Compatible PNGs)
 
+# What do I need to build it?
+
+  - Ubuntu 14.04, 15.04 or 16.04 (Though many other linux distros will work fine)
+  - CMake
+  - Boost
+  - zlib
+  - libjpeg
+  - [OpenCV](http://sourceforge.net/projects/opencvlibrary/files/opencv-unix/2.4.9/opencv-2.4.9.zip)
+
+```bash
+sudo apt-get install g++ cmake cmake-gui libboost-all-dev build-essential
+
+wget http://sourceforge.net/projects/opencvlibrary/files/opencv-unix/2.4.9/opencv-2.4.9.zip
+unzip opencv-2.4.9.zip
+cd opencv-2.4.9.zip
+mkdir build
+cd build
+cmake -D BUILD_NEW_PYTHON_SUPPORT=OFF -D WITH_OPENCL=OFF -D WITH_OPENMP=ON -D INSTALL_C_EXAMPLES=OFF -D BUILD_DOCS=OFF -D BUILD_EXAMPLES=OFF -D WITH_QT=OFF -D WITH_OPENGL=OFF -D WITH_VTK=OFF -D BUILD_PERF_TESTS=OFF -D BUILD_TESTS=OFF -D WITH_CUDA=OFF -D BUILD_opencv_gpu=OFF ..
+make -j8
+sudo make install
+```
+  
+## Python package
+  - numpy
+
+```bash
+sudo apt-get install pip
+pip install numpy
+```
+
+
 # Build #
 ```bash
 cd ./pngtoklg
@@ -28,10 +59,15 @@ Should place **associations.txt** under working directory.
 About how to generate associations.txt please read "Related files" section.
 
 ## Example ##
+Download the file provided by ICL-NUIM.
+https://www.doc.ic.ac.uk/~ahanda/VaFRIC/iclnuim.html
+(Living Room 'lr kt0') => (TUM RGB-D Compatible PNGs)
+
+
 ```bash
-./pngtoklg -w ../livingroom_kt0_rs -o liv.klg -s 0.0002 -t
+./pngtoklg -w ~/Downloads/living_room_traj0_frei_png -o ~/Downloads/living_room_traj0_frei_png/liv.klg -s 0.0002
 ```
-After execute the command above, "./livingroom_kt0_rs" folder should have liv.klg file (about 3.2Mb).
+After execute the command above, "~/Downloads/living_room_traj0_frei_png" folder should have liv.klg file (about 3.2GB).
 
 
 ## Convert TUM dataset ##
@@ -75,16 +111,16 @@ Sample file content
 
 Type the following command
 ```bash
->python associate.py PATH_TO_SEQUENCE/rgb.txt PATH_TO_SEQUENCE/depth.txt > associations.txt
+>python associate.py PATH_TO_SEQUENCE/depth.txt PATH_TO_SEQUENCE/rgb.txt > associations.txt
 ```
 
 Sample file content (TUM RGB-D dataset format)
 If you are using ICL-NUIM, the timestamp will be integer number
 ```
-1311868164.363181 rgb/1311868164.363181.png 1311868164.373557 depth/1311868164.373557.png
-1311868164.399026 rgb/1311868164.399026.png 1311868164.407784 depth/1311868164.407784.png
-1311868164.430940 rgb/1311868164.430940.png 1311868164.437021 depth/1311868164.437021.png
-1311868164.463055 rgb/1311868164.463055.png 1311868164.477039 depth/1311868164.477039.png
-1311868164.499130 rgb/1311868164.499130.png 1311868164.507698 depth/1311868164.507698.png
-1311868164.531025 rgb/1311868164.531025.png 1311868164.539395 depth/1311868164.539395.png
+0.033333 ./depth/scene_00_0000_rs.png 0.033333 ./rgb/scene_00_0000_rs.png
+0.066666 ./depth/scene_00_0001_rs.png 0.066666 ./rgb/scene_00_0001_rs.png
+0.099999 ./depth/scene_00_0002_rs.png 0.099999 ./rgb/scene_00_0002_rs.png
+0.133332 ./depth/scene_00_0003_rs.png 0.133332 ./rgb/scene_00_0003_rs.png
+0.166665 ./depth/scene_00_0004_rs.png 0.166665 ./rgb/scene_00_0004_rs.png
+0.199998 ./depth/scene_00_0005_rs.png 0.199998 ./rgb/scene_00_0005_rs.png
 ```
