@@ -169,7 +169,8 @@ int parseInfoFile(
     if(!pFile) {
         return -1;
     }
-
+    
+    int iFrameCnt = 0;
     while ((read = getline(&line, &len, pFile)) != -1) {
 
         std::istringstream is(line);
@@ -203,7 +204,8 @@ int parseInfoFile(
 
                         if(true == g_bFlag_TUM) 
                         {
-                            timeSeq = numb;
+                            timeSeq = iFrameCnt;
+                            iFrameCnt++;
                         }
                         else
                         {
@@ -235,7 +237,8 @@ int parseInfoFile(
 
                         if(true == g_bFlag_TUM) 
                         {
-                            timeSeq = numb;
+                            timeSeq = iFrameCnt;
+                            iFrameCnt++;
                         }
                         else
                         {
