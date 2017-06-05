@@ -52,40 +52,40 @@ All parameters are required.
 - -o output file name (the output file will be place under working directory)
 - -r associations.txt is in reverse order (rgb)(depth)
 - -t TUM format / defualt format is ICL-NUIM
-- -s Scale factor in floating point ex. '0.0002'
+- -s Scale factor in floating point.  default=5000
+
+>For more **scale factor** detail, please reference: 
+>http://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#intrinsic_camera_calibration_of_the_kinect
 
 ## Prerequirement##
 Should place **associations.txt** under working directory.
 About how to generate associations.txt please read "Related files" section.
 
-## Example ##
-Download the file provided by ICL-NUIM.
-https://www.doc.ic.ac.uk/~ahanda/VaFRIC/iclnuim.html
+## Download ##
+### ICL-NUIM ###
+Download the file provided by [ICL-NUIM](https://www.doc.ic.ac.uk/~ahanda/VaFRIC/iclnuim.html)
 (Living Room 'lr kt0') => (TUM RGB-D Compatible PNGs)
 
-
-```bash
-./pngtoklg -w ~/Downloads/living_room_traj0_frei_png -o ~/Downloads/living_room_traj0_frei_png/liv.klg -s 0.0002
-```
-After execute the command above, "~/Downloads/living_room_traj0_frei_png" folder should have liv.klg file (about 3.2GB).
-
-
+### TUM ###
+ [TUM RGB-D png dataset](http://vision.in.tum.de/data/datasets/rgbd-dataset/download#freiburg1_desk)
+ 
 ## Convert TUM dataset ##
 ```bash
-./pngtoklg -w './tum/rgbd_dataset_freiburg2_360_kidnap/' -o './360_kidnap.klg' -t -s 0.0002
+./pngtoklg -w '/TUM/rgbd_dataset_freiburg2_desk/' -o '/TUM/rgbd_dataset_freiburg2_desk/fr2desk.klg' -t
 ```
+After execute the command above, "/TUM/rgbd_dataset_freiburg2_desk" folder should contain fr2desk.klg file (about 4.4GB).
 
 Run with ElasticFusion
 ```bash
-./ElasticFusion -l (path to 360_kidnap.klg) -d 12 -c 3 -f
+./ElasticFusion -l (path to fr2desk.klg) -d 12 -c 3 -f
 ```
 
 ## Convert ICL-NUIM dataset
 remove -t option which is stand for tum
 ```bash
-./pngtoklg -w './tum/rgbd_dataset_freiburg2_360_kidnap/' -o './360_kidnap.klg' -s 0.0002
+./pngtoklg -w '/iclnuim/living_room_traj0_frei_png/' -o '/iclnuim/living_room_traj0_frei_png/liv.klg'
 ```
-
+http://www.doc.ic.ac.uk/~ahanda/living_room_traj0_frei_png.tar.gz
 # Related files #
 
 
@@ -110,8 +110,9 @@ Sample file content
 > This code is developed by TUM, which use to associate rgb.txt and depth.txt
 
 Type the following command
+
 ```bash
->python associate.py PATH_TO_SEQUENCE/depth.txt PATH_TO_SEQUENCE/rgb.txt > associations.txt
+python associate.py PATH_TO_SEQUENCE/depth.txt PATH_TO_SEQUENCE/rgb.txt > associations.txt
 ```
 
 Sample file content (TUM RGB-D dataset format)

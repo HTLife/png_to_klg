@@ -42,7 +42,7 @@ std::string strWorkingDir;
 
 bool g_bFlag_reverse = false;
 bool g_bFlag_TUM = false;
-double g_dScale = 0.001;//depth scale
+double g_dScale = 5000;//depth scale
 
 
 /** @brief Convert png image files to .klg format
@@ -55,7 +55,9 @@ void convertToKlg(
     VEC_INFO &vec_info,
     std::string &strKlgFileName)
 {
-    std::cout << "klg_name=" << strKlgFileName << std::endl;
+    std::cout << "klg_name:\n\t" << strKlgFileName << std::endl;
+
+
     std::string filename = strKlgFileName;//"test2.klg";
     FILE * logFile = fopen(filename.c_str(), "wb+");
 
@@ -66,20 +68,20 @@ void convertToKlg(
     //CvMat *encodedImage = 0;
 
     VEC_INFO::iterator it = vec_info.begin();
+    int count = 1;
+    std::cout << "Progress:\n";
     for(it; it != vec_info.end(); it++) 
     {
         std::string strAbsPathDepth = 
             std::string(
                         getcwd(NULL, 0)) + "/" +
                         it->second.first;
-        std::cout << strAbsPathDepth << std::endl;
 
 
         cv::Mat depth = imread(strAbsPathDepth.c_str(), cv::IMREAD_UNCHANGED);
 
-        //double depthScale = 0.0001;
         double depthScale = g_dScale;
-        depth.convertTo(depth, CV_16UC1, 1000 * depthScale);
+        depth.convertTo(depth, CV_16UC1, 1000 * 1.0 / depthScale);
 
         int32_t depthSize = depth.total() * depth.elemSize();
 
@@ -87,7 +89,6 @@ void convertToKlg(
                     getcwd(NULL, 0)) + "/" +
                     it->second.second;
 
-        std::cout << strAbsPath << std::endl;
         IplImage *img = 
             cvLoadImage(strAbsPath.c_str(), 
                         CV_LOAD_IMAGE_UNCHANGED);
@@ -96,28 +97,18 @@ void convertToKlg(
             fclose(logFile);
             return;
         }
-        //int jpeg_params[] = {CV_IMWRITE_JPEG_QUALITY, 90, 0};
-        //if(encodedImage != 0)
-        //{
-        //    cvReleaseMat(&encodedImage);
-        //}
-        //encodedImage = cvEncodeImage(".jpg", img, jpeg_params);
 
         int32_t imageSize = img->height * img->width * sizeof(unsigned char) * 3;
-        //int32_t imageSize = encodedImage->width;
 
         unsigned char * rgbData = 0;
         rgbData = (unsigned char *)img->imageData;
-        //rgbData = (unsigned char *)encodedImage->data.ptr;
-        /**
-         * Format is:
-         * int64_t: timestamp
-         * int32_t: depthSize
-         * int32_t: imageSize
-         * depthSize * unsigned char: depth_compress_buf
-         * imageSize * unsigned char: encodedImage->data.ptr
-         */
-        std::cout << it->first << std::endl;
+
+        std::cout << '\r'
+                  << std::setw(4) << std::setfill('0') << count << " / "
+                  << std::setw(4) << std::setfill('0') << vec_info.size() 
+                  << std::flush;
+        count++;
+
         /// Timestamp
         fwrite(&it->first, sizeof(int64_t), 1, logFile);
 
@@ -135,16 +126,9 @@ void convertToKlg(
 
         cvReleaseImage(&img);
         depth.release();
-        //if(encodedImage != 0)
-        //{
-        //    cvReleaseMat(&encodedImage);
-        //}
     }
+    std::cout << std::endl;
 
-    //if(encodedImage != 0)
-    //{
-    //    cvReleaseMat(&encodedImage);
-    //}
     fclose(logFile);
 }
 
@@ -192,71 +176,40 @@ int parseInfoFile(
 
             while (getline(iss, token, ' '))
             {
-                if(true == g_bFlag_reverse)
-                {
-                    if(0 == iIdxToken) //Time rgb
-                    {//first token which is time
-                        token.erase(
-                            std::remove(token.begin(), 
-                                token.end(), '.'), token.end());
-                        int numb;
-                        std::istringstream ( token ) >> numb;
+                if(2 == iIdxToken) //Time rgb
+                {//first token which is time
 
-                        if(true == g_bFlag_TUM) 
-                        {
-                            timeSeq = iFrameCnt;
-                            iFrameCnt++;
-                        }
-                        else
-                        {
-                            timeSeq = numb * 1000000;
-                        }
-                    } 
-                    else if(1 == iIdxToken)//rgb path
+
+                } 
+                else if(3 == iIdxToken)//rgb path
+                {
+                    strRgbPath = token;
+                }
+                else if(0 == iIdxToken)//Time depth
+                {
+                    /// Do nothing
+                    //std::cout << token << std::endl;
+                    token.erase(
+                        std::remove(token.begin(), 
+                            token.end(), '.'), token.end());
+                    //std::cout << token << std::endl;
+                    long long unsigned int numb;
+                    std::istringstream ( token ) >> numb;
+                    
+                    if(true == g_bFlag_TUM) 
                     {
-                        strRgbPath = token;
+                        timeSeq = (int64_t)numb;
+                        //timeSeq = iFrameCnt;
+                        iFrameCnt++;
                     }
-                    else if(2 == iIdxToken)//Time depth
+                    else
                     {
-                        /// Do nothing
-                    }
-                    else if(3 == iIdxToken)//depth path
-                    {
-                        strDepthPath = token;
+                        timeSeq = numb * 1000000;
                     }
                 }
-                else
-                {//reverse order
-                    if(2 == iIdxToken) //Time rgb
-                    {//first token which is time
-                        token.erase(
-                            std::remove(token.begin(), 
-                                token.end(), '.'), token.end());
-                        int numb;
-                        std::istringstream ( token ) >> numb;
-
-                        if(true == g_bFlag_TUM) 
-                        {
-                            timeSeq = iFrameCnt;
-                            iFrameCnt++;
-                        }
-                        else
-                        {
-                            timeSeq = numb * 1000000;
-                        }
-                    } 
-                    else if(3 == iIdxToken)//rgb path
-                    {
-                        strRgbPath = token;
-                    }
-                    else if(0 == iIdxToken)//Time depth
-                    {
-                        /// Do nothing
-                    }
-                    else if(1 == iIdxToken)//depth path
-                    {
-                        strDepthPath = token;
-                    }
+                else if(1 == iIdxToken)//depth path
+                {
+                    strDepthPath = token;
                 }
                 iIdxToken++;
             }
@@ -313,10 +266,11 @@ int main(int argc, char* argv[])
             "\n"
             "-w working directory\n"
             "-o output klg filename\n"
-            "-r associations.txt is in reverse order (rgb)(depth)\n"
             "-t TUM format\n"
-            "-s Scale factor in floating point ex.  '0.0002'\n"
-            "Example: ./pngtoklg -w ../livingroom_kt0_rs -o liv.klg\n");        
+            "-s Scale factor in floating point ex.  '5000'\n"
+            "For more scale factor detail, please reference: \nhttp://vision.in.tum.de/data/datasets/rgbd-dataset/file_formats#intrinsic_camera_calibration_of_the_kinect\n"
+            "Example: ./pngtoklg -w ../livingroom_kt0_rs -o liv.klg\n"
+            "associations.txt should be in (depth_time)(depth_file)(rgb_time)(rgb_file) order\n");
         return -1;
     }
 
@@ -353,12 +307,13 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    convertToKlg(vec_info, strKlgFileName);
-
-    std::cout << vec_info.size() << std::endl;
     std::cout << "Depth: " << vec_info.back().second.first << std::endl;
     std::cout << "RGB: " << vec_info.back().second.second << std::endl;
     std::cout << "scale: " << g_dScale << std::endl;
+
+    convertToKlg(vec_info, strKlgFileName);
+
+    std::cout << "Conversion complete!\n";
     return 0;
 }
 
