@@ -1,3 +1,5 @@
+> docker image is provided here https://github.com/HTLife/png_to_klg-docker 
+
 # png to klg format convertor for ElasticFusion
 
 Convert [TUM RGB-D png dataset](http://vision.in.tum.de/data/datasets/rgbd-dataset/download#freiburg1_desk) to .klg format for [Kintinuous](https://github.com/mp3guy/Kintinuous) and [ElasticFusion](https://github.com/mp3guy/ElasticFusion)
