@@ -115,6 +115,7 @@ Sample file content
 
 Type the following command
 
+**(Be aware you should remain the order of parameters, feed the depth file first and then rgb file.)**
 ```bash
 python associate.py PATH_TO_SEQUENCE/depth.txt PATH_TO_SEQUENCE/rgb.txt > associations.txt
 ```
