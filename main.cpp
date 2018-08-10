@@ -61,7 +61,7 @@ void convertToKlg(
     std::string filename = strKlgFileName;//"test2.klg";
     FILE * logFile = fopen(filename.c_str(), "wb+");
 
-    int32_t numFrames = (int32_t)vec_info.size() - 1;
+    int32_t numFrames = (int32_t)vec_info.size();
 
     fwrite(&numFrames, sizeof(int32_t), 1, logFile);
 
