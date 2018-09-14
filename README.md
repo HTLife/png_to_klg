@@ -1,3 +1,18 @@
+[![DOI](https://zenodo.org/badge/72743088.svg)](https://zenodo.org/badge/latestdoi/72743088)
+
+You can cite by
+```
+@misc{jacky_liu_2018_1419222,
+  author    = {Tse-An (Jacky) Liu},
+  title     = {png to klg}
+  version   = {1.0},
+  publisher = {Zenodo},
+  month     = Aug,
+  year      = 2018,
+  doi       = {10.5281/zenodo.1419222},
+  url       = {https://github.com/HTLife/png_to_klg}
+}
+```
 > docker image is provided here https://github.com/HTLife/png_to_klg-docker 
 
 > converted klg could be download from [here](https://drive.google.com/drive/folders/1nen4wcKzB1PKhz9MiA13rPCS0QzOMwBU?usp=sharing)
