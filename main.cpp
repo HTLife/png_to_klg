@@ -213,7 +213,11 @@ int parseInfoFile(
                 }
                 iIdxToken++;
             }
-            PATH_PAIR path_pair(strDepthPath, strRgbPath);
+            PATH_PAIR path_pair;
+            if(g_bFlag_reverse)
+                path_pair = PATH_PAIR(strRgbPath, strDepthPath);
+            else 
+                path_pair = PATH_PAIR(strDepthPath, strRgbPath);
             SEQ seq(timeSeq, path_pair);
             vec_info.push_back(seq);
         }
