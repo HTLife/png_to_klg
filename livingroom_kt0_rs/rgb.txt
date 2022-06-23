@@ -1,0 +1,6 @@
+0.033333 ./rgb/scene_00_0000_rs.png
+0.066666 ./rgb/scene_00_0001_rs.png
+0.099999 ./rgb/scene_00_0002_rs.png
+0.133332 ./rgb/scene_00_0003_rs.png
+0.166665 ./rgb/scene_00_0004_rs.png
+0.199998 ./rgb/scene_00_0005_rs.png
