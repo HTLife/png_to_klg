@@ -88,20 +88,37 @@ void convertToKlg(
         std::string strAbsPath = std::string(
                     getcwd(NULL, 0)) + "/" +
                     it->second.second;
+        #if (CV_VERSION_MAJOR >= 4)
+            cv::Mat img = cv::imread(strAbsPath.c_str(), cv::IMREAD_UNCHANGED);
+        #else
+            IplImage *img = 
+                cvLoadImage(strAbsPath.c_str(), 
+                            CV_LOAD_IMAGE_UNCHANGED);
+        #endif
 
-        IplImage *img = 
-            cvLoadImage(strAbsPath.c_str(), 
-                        CV_LOAD_IMAGE_UNCHANGED);
+        #if (CV_VERSION_MAJOR >= 4)
+        if(img.empty())
+        #else
         if(img == NULL)
+        #endif
         {
             fclose(logFile);
             return;
         }
 
+        #if (CV_VERSION_MAJOR >= 4)
+        int32_t imageSize = img.rows * img.cols * sizeof(unsigned char) * 3;
+        #else
         int32_t imageSize = img->height * img->width * sizeof(unsigned char) * 3;
+        #endif
 
         unsigned char * rgbData = 0;
+
+        #if (CV_VERSION_MAJOR >= 4)
+        rgbData = img.data;    // Mat => unsigned char*
+        #else
         rgbData = (unsigned char *)img->imageData;
+        #endif
 
         std::cout << '\r'
                   << std::setw(4) << std::setfill('0') << count << " / "
@@ -124,7 +141,11 @@ void convertToKlg(
         /// RGB buffer
         fwrite(rgbData, imageSize, 1, logFile);
 
+        #if (CV_VERSION_MAJOR >= 4)
+        
+        #else
         cvReleaseImage(&img);
+        #endif
         depth.release();
     }
     std::cout << std::endl;
